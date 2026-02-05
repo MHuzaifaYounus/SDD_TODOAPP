@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
-import { ViewState, User } from '../types';
-import { dbService } from '../services/dbService';
+import { ViewState, User } from '../types.ts';
+import { dbService } from '../services/dbService.ts';
 
 interface SignupPageProps {
   onNavigate: (view: ViewState) => void;
@@ -37,7 +36,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onNavigate, onSignup }) => {
       await dbService.createUser({ ...newUser, password });
       onSignup(newUser);
     } catch (err) {
-      setError('Registration failed. Please try again.');
+      console.error("Signup component error:", err);
+      setError('Registration failed. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -52,17 +52,17 @@ const SignupPage: React.FC<SignupPageProps> = ({ onNavigate, onSignup }) => {
         <div className="text-center">
           <div 
             onClick={() => onNavigate('LANDING')}
-            className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto cursor-pointer mb-6"
+            className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto cursor-pointer mb-6 transform hover:scale-105 transition-transform"
           >
             <i className="fa-solid fa-bolt text-white text-2xl"></i>
           </div>
-          <h2 className="text-3xl font-bold text-white">Join NovaTask</h2>
+          <h2 className="text-3xl font-bold text-white tracking-tight">Join NovaTask</h2>
           <p className="text-slate-400 mt-2">Create your account to start your journey</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-2xl space-y-6">
           {error && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-sm text-center">
+            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-sm text-center animate-pulse">
               {error}
             </div>
           )}
@@ -104,9 +104,9 @@ const SignupPage: React.FC<SignupPageProps> = ({ onNavigate, onSignup }) => {
           <button 
             type="submit" 
             disabled={isLoading}
-            className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+            className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 active:scale-[0.98]"
           >
-            {isLoading ? <i className="fa-solid fa-spinner fa-spin"></i> : 'Create Account'}
+            {isLoading ? <i className="fa-solid fa-spinner fa-spin mr-2"></i> : 'Create Account'}
           </button>
         </form>
 
@@ -114,7 +114,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onNavigate, onSignup }) => {
           Already have an account? 
           <button 
             onClick={() => onNavigate('LOGIN')}
-            className="ml-2 text-indigo-400 font-semibold hover:text-indigo-300"
+            className="ml-2 text-indigo-400 font-semibold hover:text-indigo-300 transition-colors"
           >
             Sign In
           </button>
