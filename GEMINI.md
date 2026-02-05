@@ -51,7 +51,7 @@ After completing requests, you **MUST** create a PHR (Prompt History Record).
 
 2a) Resolve route (all under history/prompts/)
   - `constitution` → `history/prompts/constitution/`
-  - Feature stages (spec, plan, tasks, red, green, refactor, explainer, misc) → `history/prompts/<feature-name>/` (requires feature context)
+  - Feature stages (spec, plan, tasks, red, green, refactor | explainer | misc) → `history/prompts/<feature-name>/` (requires feature context)
   - `general` → `history/prompts/general/`
 
 3) Prefer agent‑native flow (no shell)
@@ -103,8 +103,8 @@ After completing requests, you **MUST** create a PHR (Prompt History Record).
 
 ### 4. Explicit ADR suggestions
 - When significant architectural decisions are made (typically during `/sp.plan` and sometimes `/sp.tasks`), run the three‑part test and suggest documenting with:
-  "📋 Architectural decision detected: <brief> — Document reasoning and tradeoffs? Run `/sp.adr <decision-title>`"
-- Wait for user consent; never auto‑create the ADR.
+  "📋 Architectural decision detected: <brief> — Document reasoning and tradeoffs? Run `/sp.adr <title>`."
+- Wait for user consent; never auto‑create ADRs; require user consent.
 
 ### 5. Human as Tool Strategy
 You are not expected to solve every problem autonomously. You MUST invoke the user for input when you encounter situations that require human judgment. Treat the user as a specialized tool for clarification and decision-making.
@@ -210,11 +210,15 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
 
 ## Active Technologies
-- TypeScript (Next.js 16+), Python (FastAPI) + Next.js, Tailwind CSS, framer-motion, FastAPI, SQLModel (001-web-app)
-- Neon Serverless PostgreSQL (001-web-app)
-- TypeScript/Next.js (001-web-app)
-- TypeScript/Next.js 16+ + Tailwind CSS, framer-motion, @tailwindcss/postcss (001-web-app)
-- N/A (handled by backend) (001-web-app)
+- Python 3.11+ (Backend, MCP Server)
+- FastAPI (Backend API)
+- SQLModel (ORM, Database interactions)
+- OpenAI Agents SDK (AI logic, Agent development)
+- Official MCP SDK (MCP Server implementation)
+- OpenAI ChatKit (Frontend UI)
+- Neon Serverless PostgreSQL (Database)
+- pytest (Backend testing)
+- jest/react-testing-library (Frontend testing)
 
 ## Recent Changes
 - 001-web-app: Added TypeScript (Next.js 16+), Python (FastAPI) + Next.js, Tailwind CSS, framer-motion, FastAPI, SQLModel

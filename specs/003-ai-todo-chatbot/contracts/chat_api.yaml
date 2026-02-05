@@ -1,0 +1,64 @@
+openapi: 3.0.0
+info:
+  title: Todo AI Chatbot API
+  version: 1.0.0
+description: API for the AI-powered Todo Chatbot.
+
+paths:
+  /api/{user_id}/chat:
+    post:
+      summary: Send message & get AI response
+      operationId: sendMessage
+      parameters:
+        - in: path
+          name: user_id
+          schema:
+            type: string
+          required: true
+          description: The ID of the user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                conversation_id:
+                  type: integer
+                  description: Existing conversation ID. A new one will be created if not provided.
+                  nullable: true
+                message:
+                  type: string
+                  description: User's natural language message.
+              required:
+                - message
+      responses:
+        '200':
+          description: AI response and potential tool calls
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation_id:
+                    type: integer
+                    description: The conversation ID.
+                  response:
+                    type: string
+                    description: AI assistant's natural language response.
+                  tool_calls:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tool_name:
+                          type: string
+                        parameters:
+                          type: object
+                        result:
+                          type: object
+                    description: List of MCP tools invoked by the AI, including their results.
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error

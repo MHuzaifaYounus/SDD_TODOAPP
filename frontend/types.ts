@@ -32,3 +32,18 @@ export interface User {
   email: string;
   name: string;
 }
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  role: 'user' | 'model';
+  content: string;
+  createdAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  userId: string;
+  title: string;
+  createdAt: string;
+}
