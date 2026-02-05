@@ -2,7 +2,7 @@
 import { neon } from '@neondatabase/serverless';
 import { User, Task } from '../types';
 
-const DATABASE_URL = 'postgresql://neondb_owner:npg_wHSG3sozJLY8@ep-small-wind-ah8z6ugj-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const DATABASE_URL = process.env.DATABASE_URL;
 const sql = neon(DATABASE_URL);
 
 export class DbService {
