@@ -1,0 +1,91 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+ENV/
+.venv*/
+venv*/
+.env*/
+.env
+*.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.python-version
+.cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Builds
+build/
+dist/
+*/dist/
+*.egg
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+*.out
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.nyc_output/
+coverage/
+
+# Next.js
+.next/
+out/
+.nft.json
+.next/types/
+
+# Runtime
+db.sqlite3
+db.sqlite3-journal
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Icon?
+*/
+
+# Environment variables
+.env*
+!.env.example
+
+# Database
+*.db
+*.db-journal
+
+# Secrets
+secrets/
+*.key
+*.pem
+*.crt
+*.cert

@@ -1,4 +1,4 @@
-# Claude Code Rules
+# Gemini CLI Rules
 
 This file is generated during init for the selected agent.
 
@@ -208,3 +208,13 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
+
+## Active Technologies
+- TypeScript (Next.js 16+), Python (FastAPI) + Next.js, Tailwind CSS, framer-motion, FastAPI, SQLModel (001-web-app)
+- Neon Serverless PostgreSQL (001-web-app)
+- TypeScript/Next.js (001-web-app)
+- TypeScript/Next.js 16+ + Tailwind CSS, framer-motion, @tailwindcss/postcss (001-web-app)
+- N/A (handled by backend) (001-web-app)
+
+## Recent Changes
+- 001-web-app: Added TypeScript (Next.js 16+), Python (FastAPI) + Next.js, Tailwind CSS, framer-motion, FastAPI, SQLModel
