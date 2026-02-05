@@ -1,18 +1,17 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 
 export class GeminiService {
-  private ai: GoogleGenAI;
-
-  constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  private getClient() {
+    const apiKey = (window as any).process?.env?.API_KEY || '';
+    return new GoogleGenAI({ apiKey });
   }
 
   async suggestSubtasks(taskTitle: string) {
     try {
-      const response = await this.ai.models.generateContent({
+      const ai = this.getClient();
+      const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `I have a task called "${taskTitle}". Suggest 3-5 brief actionable subtasks in JSON format.`,
+        contents: `Task: "${taskTitle}". Suggest 3-5 very brief, actionable atomic subtasks in JSON.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -31,16 +30,17 @@ export class GeminiService {
       const data = JSON.parse(response.text || '{"subtasks": []}');
       return data.subtasks as string[];
     } catch (error) {
-      console.error("Gemini suggestion failed:", error);
+      console.error("Gemini breakdown failed:", error);
       return [];
     }
   }
 
   async suggestTags(taskTitle: string, taskDescription: string) {
     try {
-      const response = await this.ai.models.generateContent({
+      const ai = this.getClient();
+      const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Suggest 3 relevant short tags for this task: "${taskTitle}" - "${taskDescription}". Return as a JSON array of strings.`,
+        contents: `Suggest 3 professional short tags for: "${taskTitle}" - "${taskDescription}". Return JSON array of strings.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -51,7 +51,7 @@ export class GeminiService {
       });
       return JSON.parse(response.text || '[]') as string[];
     } catch (error) {
-      console.error("Gemini tag suggestion failed:", error);
+      console.error("Gemini tagging failed:", error);
       return [];
     }
   }

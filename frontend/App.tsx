@@ -1,22 +1,29 @@
-
 import React, { useState, useEffect } from 'react';
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
-import DashboardPage from './pages/DashboardPage';
-import { ViewState, User, Task } from './types';
-import { dbService } from './services/dbService';
+import LandingPage from './pages/LandingPage.tsx';
+import LoginPage from './pages/LoginPage.tsx';
+import SignupPage from './pages/SignupPage.tsx';
+import DashboardPage from './pages/DashboardPage.tsx';
+import { ViewState, User, Task } from './types.ts';
+import { dbService } from './services/dbService.ts';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('LANDING');
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    dbService.init();
+    // Attempt database initialization
+    dbService.init().catch(err => {
+      console.error("Database connection could not be established:", err);
+    });
+
     const savedUser = localStorage.getItem('nova_user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
-      setView('DASHBOARD');
+      try {
+        setUser(JSON.parse(savedUser));
+        setView('DASHBOARD');
+      } catch (e) {
+        localStorage.removeItem('nova_user');
+      }
     }
   }, []);
 
@@ -34,10 +41,11 @@ const App: React.FC = () => {
 
   const navigateTo = (newView: ViewState) => setView(newView);
 
+  // Notification logic
   useEffect(() => {
+    if (!user || view !== 'DASHBOARD') return;
+
     const interval = setInterval(async () => {
-      if (!user || view !== 'DASHBOARD') return;
-      
       try {
         const tasks = await dbService.getTasks(user.id);
         const now = new Date();
@@ -46,18 +54,21 @@ const App: React.FC = () => {
           if (!task.isCompleted && task.reminderTime) {
             const reminderDate = new Date(task.reminderTime);
             const diff = now.getTime() - reminderDate.getTime();
+            // Check if reminder is within the current minute
             if (diff >= 0 && diff < 60000) {
               if (Notification.permission === 'granted') {
-                new Notification('NovaTask Reminder', {
-                  body: `Don't forget: ${task.title}`,
+                new Notification('NovaTask', {
+                  body: `Action Required: ${task.title}`,
                   icon: 'https://cdn-icons-png.flaticon.com/512/2098/2098402.png'
                 });
+              } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission();
               }
             }
           }
         });
       } catch (err) {
-        console.error("Reminder checker failed", err);
+        console.warn("Silent failure in reminder loop:", err);
       }
     }, 60000);
 
@@ -65,7 +76,7 @@ const App: React.FC = () => {
   }, [view, user]);
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500/30">
       {view === 'LANDING' && <LandingPage onNavigate={navigateTo} />}
       {view === 'LOGIN' && <LoginPage onNavigate={navigateTo} onLogin={handleLogin} />}
       {view === 'SIGNUP' && <SignupPage onNavigate={navigateTo} onSignup={handleLogin} />}

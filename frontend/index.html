@@ -1,41 +1,74 @@
-
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NovaTask</title>
+    <title>NovaTask - Intelligent Productivity</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        :root {
+            --slate-950: #020617;
+            --slate-900: #0f172a;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
+            background-color: var(--slate-950);
             color: #f8fafc;
+            margin: 0;
+            overflow-x: hidden;
         }
+
+        /* Prevent flash of unstyled content */
+        [v-cloak] { display: none; }
+
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
         ::-webkit-scrollbar-track {
-            background: #1e293b;
+            background: #0f172a;
         }
         ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
+            background: #1e293b;
+            border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
+            background: #334155;
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .animate-glow {
+            animation: glow 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 20px -5px rgba(79, 70, 229, 0.2);
+            }
+            to {
+                box-shadow: 0 0 40px 5px rgba(79, 70, 229, 0.4);
+            }
         }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react-dom": "https://esm.sh/react-dom@^19.2.4",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
     "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
-    "@neondatabase/serverless": "https://esm.sh/@neondatabase/serverless@^0.9.0"
+    "@neondatabase/serverless": "https://esm.sh/@neondatabase/serverless@^0.9.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
@@ -43,6 +76,16 @@
 </head>
 <body>
     <div id="root"></div>
+    <!-- Entry point -->
+    <script type="module" src="./index.tsx"></script>
+    <!-- Safety shim for process.env in browser environments -->
+    <script>
+        if (typeof window !== 'undefined' && !window.process) {
+            window.process = { env: { API_KEY: '', DATABASE_URL: '' } };
+        } else if (window.process && !window.process.env) {
+            window.process.env = { API_KEY: '', DATABASE_URL: '' };
+        }
+    </script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
