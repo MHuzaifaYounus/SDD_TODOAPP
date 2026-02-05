@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -82,8 +83,12 @@
     <script>
         window.process = window.process || { env: {} };
         // Priority to existing env, otherwise use the provided string
-        window.process.env.API_KEY = window.process.env.API_KEY || '';
-        window.process.env.DATABASE_URL = window.process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_wHSG3sozJLY8@ep-small-wind-ah8z6ugj-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+        if (typeof window.process.env.API_KEY === 'undefined') {
+            window.process.env.API_KEY = '';
+        }
+        if (typeof window.process.env.DATABASE_URL === 'undefined') {
+            window.process.env.DATABASE_URL = 'postgresql://neondb_owner:npg_wHSG3sozJLY8@ep-small-wind-ah8z6ugj-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+        }
     </script>
 <script type="module" src="/index.tsx"></script>
 </body>

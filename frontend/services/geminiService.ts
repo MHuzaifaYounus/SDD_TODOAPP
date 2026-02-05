@@ -4,11 +4,6 @@ import { dbService } from "./dbService.ts";
 import { Priority, Recurrence, Task } from "../types.ts";
 
 export class GeminiService {
-  private getClient() {
-    const apiKey = (window as any).process?.env?.API_KEY || '';
-    return new GoogleGenAI({ apiKey });
-  }
-
   private getToolDefinitions(): FunctionDeclaration[] {
     return [
       {
@@ -81,133 +76,136 @@ export class GeminiService {
     history: {role: string, parts: {text: string}[]}[],
     onToolExecuted?: () => void
   ) {
-    const ai = this.getClient();
+    // ALWAYS initialize fresh to ensure correct API key handling
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
     const tools = this.getToolDefinitions();
     
-    // Save user message
+    // Save user message to DB
     await dbService.saveMessage(conversationId, 'user', userMessage);
 
     const contents = [...history, { role: 'user', parts: [{ text: userMessage }] }];
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents,
-      config: {
-        tools: [{ functionDeclarations: tools }],
-        systemInstruction: "You are NovaAssistant, a productivity manager. You must use tools for all task-related actions (add, delete, complete, update). If a user provides a task name, use it as the taskIdentifier. Do not guess; if you are unsure which task is meant, use list_tasks first. Always be precise."
-      }
-    });
-
-    let finalContent = response.text || "";
-    let toolUsed = false;
-    
-    if (response.functionCalls && response.functionCalls.length > 0) {
-      toolUsed = true;
-      const toolResults = [];
-      const executionSummaries: string[] = [];
-
-      for (const call of response.functionCalls) {
-        let result = "Error: System failed to execute the requested action.";
-        const args = call.args as any;
-
-        try {
-          // Fetch FRESH tasks for every tool call to avoid stale matching
-          const currentTasks = await dbService.getTasks(userId);
-
-          if (call.name === 'add_task') {
-            const task: Task = {
-              id: Math.random().toString(36).substr(2, 9),
-              title: args.title,
-              description: args.description || '',
-              priority: (args.priority as Priority) || Priority.MEDIUM,
-              isCompleted: false,
-              tags: [],
-              dueDate: args.dueDate || null,
-              reminderTime: null,
-              recurrence: Recurrence.NONE,
-              createdAt: new Date().toISOString()
-            };
-            await dbService.saveTask(userId, task);
-            result = `SUCCESS: Created task "${task.title}" (ID: ${task.id})`;
-          } 
-          else if (call.name === 'list_tasks') {
-            const filtered = args.status === 'active' ? currentTasks.filter(t => !t.isCompleted) :
-                             args.status === 'completed' ? currentTasks.filter(t => t.isCompleted) : currentTasks;
-            result = `SUCCESS: Found ${filtered.length} tasks. Data: ${JSON.stringify(filtered.map(t => ({ id: t.id, title: t.title, completed: t.isCompleted, priority: t.priority })))}`;
-          } 
-          else if (call.name === 'complete_task' || call.name === 'delete_task' || call.name === 'update_task') {
-            const iden = args.taskIdentifier?.toLowerCase();
-            // Search by ID first, then exact Title, then partial Title
-            const task = currentTasks.find(t => 
-              t.id === iden || 
-              t.title.toLowerCase() === iden || 
-              t.title.toLowerCase().includes(iden)
-            );
-            
-            if (!task) {
-              result = `FAILURE: Task matching identifier "${args.taskIdentifier}" could not be found. Action was aborted. Please check the spelling or list your tasks to see active items.`;
-            } else {
-              if (call.name === 'complete_task') {
-                task.isCompleted = true;
-                await dbService.saveTask(userId, task);
-                result = `SUCCESS: Marked task "${task.title}" as complete.`;
-              } else if (call.name === 'delete_task') {
-                const deleted = await dbService.deleteTask(userId, task.id);
-                result = deleted ? `SUCCESS: Task "${task.title}" was permanently removed.` : `FAILURE: The task "${task.title}" exists but the database rejected the deletion command.`;
-              } else if (call.name === 'update_task') {
-                if (args.title) task.title = args.title;
-                if (args.description) task.description = args.description;
-                if (args.priority) task.priority = args.priority as Priority;
-                await dbService.saveTask(userId, task);
-                result = `SUCCESS: Updated task "${task.title}" with new parameters.`;
-              }
-            }
-          }
-        } catch (e) {
-          console.error(`Tool execution error [${call.name}]:`, e);
-          result = `FATAL ERROR during ${call.name}: ${e}`;
-        }
-
-        executionSummaries.push(result);
-        toolResults.push({
-          functionResponse: {
-            id: call.id,
-            name: call.name,
-            response: { result }
-          }
-        });
-      }
-
-      // Trigger re-fetch on the dashboard immediately
-      if (onToolExecuted) {
-        onToolExecuted();
-      }
-
-      const secondResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [
-          ...contents,
-          { role: 'model', parts: response.candidates[0].content.parts },
-          { role: 'user', parts: toolResults as any }
-        ],
-        config: { 
-          systemInstruction: "You are NovaAssistant. Carefully review the tool results provided. If a result starts with 'FAILURE' or 'ERROR', explain to the user exactly why the action failed (e.g., 'I couldn't find a task named X'). If it starts with 'SUCCESS', confirm the action clearly. DO NOT give generic confirmations if an error occurred. If you cannot generate a response, just repeat the technical error message clearly."
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents,
+        config: {
+          tools: [{ functionDeclarations: tools }],
+          systemInstruction: "You are NovaAssistant, a productivity manager. You must use tools for all task-related actions. If you cannot find a task by the user's provided name, list the tasks first. Confirm actions clearly."
         }
       });
-      
-      // Fallback to manual summary if model fails to generate one
-      finalContent = secondResponse.text || executionSummaries.join('; ');
-    }
 
-    await dbService.saveMessage(conversationId, 'model', finalContent);
-    return { content: finalContent, toolUsed };
+      if (!response.candidates?.[0]) {
+        throw new Error("No response from AI model.");
+      }
+
+      const modelTurn = response.candidates[0].content;
+      let finalContent = response.text || "";
+      
+      if (response.functionCalls && response.functionCalls.length > 0) {
+        const toolResults = [];
+        const executionSummaries: string[] = [];
+
+        for (const call of response.functionCalls) {
+          let result = "Error: Tool execution failed.";
+          const args = call.args as any;
+
+          try {
+            const currentTasks = await dbService.getTasks(userId);
+
+            if (call.name === 'add_task') {
+              const task: Task = {
+                id: Math.random().toString(36).substr(2, 9),
+                title: args.title,
+                description: args.description || '',
+                priority: (args.priority as Priority) || Priority.MEDIUM,
+                isCompleted: false,
+                tags: [],
+                dueDate: args.dueDate || null,
+                reminderTime: null,
+                recurrence: Recurrence.NONE,
+                createdAt: new Date().toISOString()
+              };
+              await dbService.saveTask(userId, task);
+              result = `SUCCESS: Created task "${task.title}"`;
+            } 
+            else if (call.name === 'list_tasks') {
+              const filtered = args.status === 'active' ? currentTasks.filter(t => !t.isCompleted) :
+                               args.status === 'completed' ? currentTasks.filter(t => t.isCompleted) : currentTasks;
+              result = `SUCCESS: Found tasks: ${JSON.stringify(filtered.map(t => ({ id: t.id, title: t.title })))}`;
+            } 
+            else if (call.name === 'complete_task' || call.name === 'delete_task' || call.name === 'update_task') {
+              const iden = args.taskIdentifier?.toLowerCase();
+              const task = currentTasks.find(t => 
+                t.id === iden || 
+                t.title.toLowerCase() === iden || 
+                t.title.toLowerCase().includes(iden)
+              );
+              
+              if (!task) {
+                result = `FAILURE: Task "${args.taskIdentifier}" not found.`;
+              } else {
+                if (call.name === 'complete_task') {
+                  task.isCompleted = true;
+                  await dbService.saveTask(userId, task);
+                  result = `SUCCESS: Completed "${task.title}"`;
+                } else if (call.name === 'delete_task') {
+                  await dbService.deleteTask(userId, task.id);
+                  result = `SUCCESS: Deleted "${task.title}"`;
+                } else if (call.name === 'update_task') {
+                  if (args.title) task.title = args.title;
+                  if (args.priority) task.priority = args.priority as Priority;
+                  await dbService.saveTask(userId, task);
+                  result = `SUCCESS: Updated "${task.title}"`;
+                }
+              }
+            }
+          } catch (e) {
+            result = `ERROR: ${e instanceof Error ? e.message : 'Unknown error'}`;
+          }
+
+          executionSummaries.push(result);
+          toolResults.push({
+            functionResponse: {
+              name: call.name,
+              response: { result }
+            }
+          });
+        }
+
+        if (onToolExecuted) onToolExecuted();
+
+        const secondResponse = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: [
+            ...contents,
+            modelTurn,
+            { role: 'function', parts: toolResults }
+          ],
+          config: { 
+            systemInstruction: "You are NovaAssistant. Report the exact status of the tools used. If a tool reported FAILURE or ERROR, explain the reason clearly to the user."
+          }
+        });
+        
+        finalContent = secondResponse.text || executionSummaries.join('. ');
+      }
+
+      await dbService.saveMessage(conversationId, 'model', finalContent);
+      return { content: finalContent, toolUsed: !!response.functionCalls?.length };
+
+    } catch (error) {
+      console.error("Gemini AI communication failure:", error);
+      const errorMessage = error instanceof Error ? error.message : "Internal AI engine failure.";
+      await dbService.saveMessage(conversationId, 'model', `Error: ${errorMessage}`);
+      throw new Error(errorMessage);
+    }
   }
 
   async suggestSubtasks(taskTitle: string) {
     try {
-      const ai = this.getClient();
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: `Task: "${taskTitle}". Suggest 3 actionable subtasks in JSON.`,
         config: {
           responseMimeType: "application/json",
@@ -227,10 +225,10 @@ export class GeminiService {
 
   async suggestTags(taskTitle: string, taskDescription: string) {
     try {
-      const ai = this.getClient();
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Suggest 3 short tags for: "${taskTitle}". Return JSON array of strings.`,
+        model: 'gemini-3-flash-preview',
+        contents: `Suggest 3 tags for: "${taskTitle}". Return JSON array.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
