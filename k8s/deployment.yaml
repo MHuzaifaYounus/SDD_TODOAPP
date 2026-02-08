@@ -21,7 +21,34 @@ spec:
     spec:
       containers:
       - name: worker
-        image: todo-worker:latest
-        imagePullPolicy: IfNotPresent
+        image: ${{ secrets.DOCKER_USERNAME }}/todo-worker:${{ github.sha }}
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-app
+  labels:
+    app: todo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-app
+  template:
+    metadata:
+      labels:
+        app: todo-app
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "todo-app"
+        dapr.io/app-port: "80" # Assuming frontend listens on port 80
+    spec:
+      containers:
+      - name: frontend
+        image: ${{ secrets.DOCKER_USERNAME }}/todo-app:${{ github.sha }}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
