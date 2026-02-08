@@ -1,0 +1,24 @@
+# Reminder Event Contract (YAML)
+
+type: object
+properties:
+  taskId:
+    type: string
+    format: uuid
+    description: Unique identifier for the task the reminder is associated with.
+  userId:
+    type: string
+    format: uuid
+    description: Unique identifier for the user who owns the task.
+  message:
+    type: string
+    description: The content of the reminder notification message.
+  reminderTimestamp:
+    type: string
+    format: date-time
+    description: The timestamp (ISO 8601) when the reminder was originally scheduled.
+required:
+  - taskId
+  - userId
+  - message
+  - reminderTimestamp

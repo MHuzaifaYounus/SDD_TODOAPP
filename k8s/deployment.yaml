@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-worker
+  labels:
+    app: todo-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-worker
+  template:
+    metadata:
+      labels:
+        app: todo-worker
+      annotations:
+        # THE MAGIC LINES: This enables Dapr for the worker
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "todo-worker"
+        dapr.io/app-port: "8000"
+    spec:
+      containers:
+      - name: worker
+        image: todo-worker:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000

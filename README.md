@@ -1,136 +1,77 @@
-# Todo Application
+# Deployment Instructions: Serverless Frontend Application
 
-A full-stack web application for task management with user authentication.
+This document provides instructions for building and deploying the React+Vite frontend application to a local Minikube Kubernetes cluster.
 
-## Features
+## Prerequisites
 
-- User registration and login
-- Create, read, update, and delete tasks
-- Secure user data isolation
-- Responsive web interface
+Before you begin, ensure you have the following installed:
 
-## Technology Stack
+-   **Node.js (v18+)** and **npm**: For building the React application.
+-   **Docker**: For building container images.
+-   **Minikube**: A local Kubernetes cluster.
+-   **kubectl**: The Kubernetes command-line tool.
+-   **A web browser**: For accessing the deployed application.
 
-- **Frontend**: Next.js 16+, TypeScript, Tailwind CSS
-- **Backend**: Python 3.13+, FastAPI, SQLModel
-- **Database**: Neon Serverless PostgreSQL
-- **Authentication**: JWT-based authentication
+## Project Structure (Relevant Files)
 
-## Authentication Error Handling
+-   `deploy.sh`: Automation script for building, deploying, and opening the application.
+-   `frontend/Dockerfile`: Defines the multi-stage Docker build for the React application.
+-   `frontend/nginx.conf`: Nginx configuration for serving the React app and handling client-side routing.
+-   `k8s/deployment.yaml`: Kubernetes Deployment manifest for the frontend application.
+-   `k8s/service.yaml`: Kubernetes Service (NodePort) manifest to expose the application.
+-   `.env`: (Optional) Local environment variables that will be baked into the Docker image.
 
-This application includes robust error handling for authentication flows to prevent the common "Objects are not valid as a React child" error that occurs when FastAPI returns Pydantic validation errors.
+## Deployment Steps
 
-### Problem
-When the backend returns a 422 Validation Error from Pydantic, FastAPI returns a structured error object:
-```json
-{
-  "detail": [
-    {
-      "type": "string_too_short",
-      "loc": ["body", "email"],
-      "msg": "String should have at least 1 character",
-      "input": "",
-      "ctx": {"min_length": 1}
-    }
-  ]
-}
-```
+1.  **Start Minikube**:
+    Ensure your Minikube cluster is running. If not, start it using:
+    ```bash
+    minikube start
+    ```
 
-But the frontend previously expected `err.detail` to be a simple string, causing React rendering errors.
+2.  **Navigate to the project root**:
+    ```bash
+    cd /path/to/your/project/root
+    ```
 
-### Solution
-The frontend authentication service now normalizes error responses:
+3.  **Create a `.env` file (Optional)**:
+    If your application requires environment variables like `VITE_GEMINI_API_KEY` or `VITE_DB_URL` during the build process, create a `.env` file in the project root:
+    ```
+    VITE_GEMINI_API_KEY=your_gemini_api_key
+    VITE_DB_URL=your_database_url
+    ```
+    These variables will be automatically passed as build arguments to the `Dockerfile`.
 
-1. When backend returns a 422 validation error (array format), extract the message from the first error object
-2. When backend returns a standard error (string format), use it directly
-3. Always return a consistent error object with a string detail property
+4.  **Run the deployment script**:
+    Execute the `deploy.sh` script to build the Docker image, apply Kubernetes manifests, and open the application in your browser:
+    ```bash
+    chmod +x deploy.sh
+    ./deploy.sh
+    ```
+    The script will:
+    -   Verify Minikube status.
+    -   Set your shell to use Minikube's Docker daemon.
+    -   Build the `todo-app:latest` Docker image.
+    -   Apply `k8s/deployment.yaml` and `k8s/service.yaml`.
+    -   Retrieve the application's NodePort URL.
+    -   Open the application URL in your default web browser.
 
-### Files Updated
-- `frontend/src/services/auth.js` - Implements error normalization utility
-- `frontend/src/components/Auth/Login.tsx` - Updated to handle normalized errors
-- `frontend/src/components/Auth/Register.tsx` - Updated to handle normalized errors
+## Verifying Deployment
 
-## Setup
+After the script completes, the application should open in your browser. You can manually verify:
 
-### Backend Setup
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
+-   **Accessibility**: Ensure the application loads correctly in the browser.
+-   **Client-Side Routing**: Navigate to different routes within the application (e.g., `/dashboard`, `/settings`) and try refreshing the page. The application should load correctly without 404 errors, indicating Nginx is properly handling React Router.
+-   **Kubernetes Resources**: You can check the deployed resources using `kubectl`:
+    ```bash
+    kubectl get deployments
+    kubectl get services
+    kubectl get pods
+    ```
 
-2. Install Python dependencies:
-   ```bash
-   # Using uv (recommended)
-   uv pip install -r requirements.txt
+## Troubleshooting
 
-   # Or using pip
-   pip install -r requirements.txt
-   ```
-
-3. Set up environment variables in `.env`:
-   ```bash
-   DATABASE_URL=postgresql://username:password@host:port/database_name
-   NEON_DATABASE_URL=postgresql://username:password@host:port/database_name
-   JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
-   JWT_ALGORITHM=HS256
-   JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
-   AUTH_SECRET=your-auth-secret-key
-   APP_ENV=development
-   DEBUG=True
-   ```
-
-4. Start the backend server:
-   ```bash
-   uvicorn src.main:app --reload --port 8000
-   ```
-
-### Frontend Setup
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-3. Set up environment variables in `.env.local`:
-   ```bash
-   NEXT_PUBLIC_API_URL=http://localhost:8000
-   NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
-   NEXT_PUBLIC_AUTH_SECRET=your-auth-secret-key
-   NEXT_PUBLIC_APP_NAME=Todo Application
-   NODE_ENV=development
-   ```
-
-4. Start the development server:
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-## Running the Application
-
-1. Make sure your database tables are created (run `python create_tables.py` in backend)
-2. Start the backend: `uvicorn src.main:app --reload --port 8000`
-3. Start the frontend: `npm run dev`
-4. Access the application at `http://localhost:3000`
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - Authenticate user
-- `POST /api/auth/logout` - Logout user
-
-### Task Management
-- `GET /api/tasks` - Get all user's tasks
-- `POST /api/tasks` - Create a new task
-- `GET /api/tasks/{id}` - Get specific task
-- `PUT /api/tasks/{id}` - Update task
-- `PATCH /api/tasks/{id}/status` - Update task status
-- `DELETE /api/tasks/{id}` - Delete task
+-   **Minikube not running**: The `deploy.sh` script will detect this and exit. Start Minikube with `minikube start`.
+-   **Docker build failures**: Check the console output for errors during the `docker build` step. Ensure `npm install` and `npm run build` succeed locally.
+-   **Kubernetes deployment issues**: Use `kubectl describe deployment todo-app-deployment` or `kubectl logs <pod-name>` to inspect issues.
+-   **Application not opening**: If the browser doesn't open, copy the URL printed by `deploy.sh` (e.g., `http://<minikube-ip>:30000`) and paste it manually into your browser.

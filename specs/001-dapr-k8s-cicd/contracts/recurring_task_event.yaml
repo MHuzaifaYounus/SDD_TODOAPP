@@ -1,0 +1,24 @@
+# Recurring Task Event Contract (YAML)
+
+type: object
+properties:
+  originalTaskId:
+    type: string
+    format: uuid
+    description: Unique identifier of the original recurring task.
+  userId:
+    type: string
+    format: uuid
+    description: Unique identifier for the user who owns the task.
+  nextDueDate:
+    type: string
+    format: date-time
+    description: The calculated due date (ISO 8601) for the new task to be spawned.
+  recurrencePattern:
+    type: string
+    description: The pattern used to generate the next task (e.g., "daily", "weekly").
+required:
+  - originalTaskId
+  - userId
+  - nextDueDate
+  - recurrencePattern

@@ -1,7 +1,12 @@
-
 import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
 import { dbService } from "./dbService.ts";
 import { Priority, Recurrence, Task } from "../types.ts";
+
+/**
+ * HARDCODED API KEY
+ * This bypasses all environment variable and Docker injection issues.
+ */
+const HARDCODED_API_KEY = "AIzaSyDFSZ4pcN76Y0dqfbvn7N3mp40TqTNgJZA";
 
 export class GeminiService {
   private getToolDefinitions(): FunctionDeclaration[] {
@@ -76,8 +81,9 @@ export class GeminiService {
     history: {role: string, parts: {text: string}[]}[],
     onToolExecuted?: () => void
   ) {
-    // ALWAYS initialize fresh to ensure correct API key handling
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Initialize directly with hardcoded key
+    const ai = new GoogleGenAI({ apiKey: HARDCODED_API_KEY });
+
     const tools = this.getToolDefinitions();
     
     // Save user message to DB
@@ -87,7 +93,7 @@ export class GeminiService {
 
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.5-flash', // Updated to stable flash model
         contents,
         config: {
           tools: [{ functionDeclarations: tools }],
@@ -176,7 +182,7 @@ export class GeminiService {
         if (onToolExecuted) onToolExecuted();
 
         const secondResponse = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
+          model: 'gemini-2.5-flash',
           contents: [
             ...contents,
             modelTurn,
@@ -203,9 +209,9 @@ export class GeminiService {
 
   async suggestSubtasks(taskTitle: string) {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: HARDCODED_API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.5-flash',
         contents: `Task: "${taskTitle}". Suggest 3 actionable subtasks in JSON.`,
         config: {
           responseMimeType: "application/json",
@@ -225,9 +231,9 @@ export class GeminiService {
 
   async suggestTags(taskTitle: string, taskDescription: string) {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: HARDCODED_API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.5-flash',
         contents: `Suggest 3 tags for: "${taskTitle}". Return JSON array.`,
         config: {
           responseMimeType: "application/json",

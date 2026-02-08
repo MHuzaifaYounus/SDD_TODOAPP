@@ -219,6 +219,10 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 - Neon Serverless PostgreSQL (Database)
 - pytest (Backend testing)
 - jest/react-testing-library (Frontend testing)
+- JavaScript/TypeScript (Node.js 18), Nginx + React, Vite, Nginx, Docker, Kubernetes (Minikube) (001-serverless-frontend-deploy)
+- N/A (Serverless frontend, communicates with external services) (001-serverless-frontend-deploy)
+- Python 3.11+ (Backend, new Background Worker), TypeScript (Frontend), Go (Dapr sidecars implicitly) + FastAPI, Dapr, Kafka client (for worker), SQLModel, Kubernetes, Helm, Docker, GitHub Actions, Redpanda Cloud (Kafka), Neon PostgreSQL (State Store) (001-dapr-k8s-cicd)
+- Neon PostgreSQL (primarily via Dapr State Store component) (001-dapr-k8s-cicd)
 
 ## Recent Changes
 - 001-web-app: Added TypeScript (Next.js 16+), Python (FastAPI) + Next.js, Tailwind CSS, framer-motion, FastAPI, SQLModel

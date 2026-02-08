@@ -1,0 +1,29 @@
+# values-cloud.yaml
+# Values specific for Cloud (Azure AKS, GKE, OKE) deployment
+
+# Image tags should typically be set to release versions in CI/CD
+frontend:
+  image:
+    tag: "latest" # or specific release version e.g., "v1.0.0"
+  replicaCount: 2 # More replicas for production
+  service:
+    type: ClusterIP # Typically internal, exposed via ingressService
+
+backend:
+  image:
+    tag: "latest" # or specific release version
+  replicaCount: 2
+  service:
+    type: ClusterIP
+
+worker:
+  image:
+    tag: "latest" # or specific release version
+  replicaCount: 2
+  service:
+    type: ClusterIP
+
+# Ingress service for exposing the application publicly
+ingressService:
+  type: LoadBalancer # Exposes the frontend to the internet
+  # Additional ingress configurations could go here (e.g., hostname, TLS, annotations for cloud-specific ingress controllers)

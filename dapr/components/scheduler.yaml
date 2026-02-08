@@ -1,0 +1,18 @@
+# Dapr Cron Binding Component Configuration (for Jobs API)
+# This component uses the cron binding to define scheduled tasks.
+# The actual "Jobs API" in Dapr v1.11+ doesn't require a separate component to *enable* the API,
+# but rather relies on a binding for scheduling. This 'bindings.cron' can trigger events
+# or calls based on a cron schedule.
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: scheduler
+  namespace: default # The namespace where this component is deployed.
+spec:
+  type: bindings.cron
+  version: v1
+  # Metadata for cron binding configuration.
+  metadata:
+  - name: schedule
+    value: "@every 15m" # Default schedule. This can be overridden when creating Dapr Jobs.
+                       # Example cron expressions: "0 30 * * * *" (every 30 mins), "@every 1h" (every hour).

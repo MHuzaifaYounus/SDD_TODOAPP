@@ -1,0 +1,24 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: task-pubsub
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+  - name: brokers
+    value: "d645tepdvf8ruqkb5pcg.any.us-east-1.mpx.prd.cloud.redpanda.com:9092"
+  - name: authRequired
+    value: "true"
+  - name: saslMechanism
+    value: "SCRAM-SHA-256"
+  - name: securityProtocol
+    value: "SASL_SSL" # <--- CRITICAL FOR CLOUD
+  - name: saslUsername
+    secretKeyRef:
+      name: kafka-secrets
+      key: username
+  - name: saslPassword
+    secretKeyRef:
+      name: kafka-secrets
+      key: password

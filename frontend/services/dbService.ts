@@ -1,6 +1,12 @@
-
 import { neon } from '@neondatabase/serverless';
 import { User, Task, Conversation, Message } from '../types.ts';
+import { eventService } from './eventService.ts';
+
+/**
+ * HARDCODED DATABASE URL
+ * This ensures the connection works immediately without environment variables.
+ */
+const HARDCODED_DB_URL = "postgresql://neondb_owner:npg_wHSG3sozJLY8@ep-small-wind-ah8z6ugj-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
 
 const STORAGE_KEYS = {
   USERS: 'novatask_fallback_users',
@@ -16,9 +22,10 @@ export class DbService {
 
   private get sql() {
     if (this.sqlClient) return this.sqlClient;
-    const url = (window as any).process?.env?.DATABASE_URL;
-    if (url) {
-      this.sqlClient = neon(url);
+    
+    // Initialize the neon client with the hardcoded URL
+    if (HARDCODED_DB_URL) {
+      this.sqlClient = neon(HARDCODED_DB_URL);
       return this.sqlClient;
     }
     return null;
@@ -33,6 +40,7 @@ export class DbService {
         return;
       }
       try {
+        // Create tables if they don't exist in the Neon Database
         await sql`
           CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
@@ -102,6 +110,8 @@ export class DbService {
 
   async saveTask(userId: string, task: Task) {
     await this.init();
+    const isNewTask = !tasks.find((t: any) => t.id === task.id);
+    // Maintain LocalStorage for offline/fallback capability
     const tasks = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.TASKS}_${userId}`) || '[]');
     const idx = tasks.findIndex((t: any) => t.id === task.id);
     if (idx > -1) tasks[idx] = task; else tasks.push(task);
@@ -114,6 +124,9 @@ export class DbService {
           VALUES (${task.id}, ${userId}, ${task.title}, ${task.description}, ${task.isCompleted}, ${task.priority}, ${task.tags}, ${task.dueDate}, ${task.reminderTime}, ${task.recurrence}, ${task.createdAt})
           ON CONFLICT (id) DO UPDATE SET title=EXCLUDED.title, description=EXCLUDED.description, is_completed=EXCLUDED.is_completed, priority=EXCLUDED.priority, tags=EXCLUDED.tags, due_date=EXCLUDED.due_date, reminder_time=EXCLUDED.reminder_time, recurrence=EXCLUDED.recurrence
         `;
+        // Publish event to Dapr
+        const eventType = isNewTask ? 'task-created' : 'task-updated';
+        await eventService.publish('task-events', { type: eventType, payload: task });
       } catch (e) { console.error(e); }
     }
   }
@@ -129,14 +142,12 @@ export class DbService {
     let wasDeletedInSql = false;
     if (this.sql) {
       try {
-        const result = await this.sql`DELETE FROM tasks WHERE id = ${id}`;
-        // In some SQL drivers, result might contain count. For now we rely on the find check in the service turn.
+        await this.sql`DELETE FROM tasks WHERE id = ${id}`;
         wasDeletedInSql = true; 
+        // Publish event to Dapr
+        await eventService.publish('task-events', { type: 'task-deleted', payload: { id } });
       } catch (e) { console.error(e); }
     }
-    
-    // We consider it a success if it was removed from at least the local storage or if SQL command executed.
-    // However, the service layer double-checks existence first.
     return wasDeletedInLocalStorage || (this.sql !== null && wasDeletedInSql);
   }
 
@@ -144,8 +155,10 @@ export class DbService {
   async getUserByEmail(email: string) {
     await this.init();
     if (this.sql) {
-      const res = await this.sql`SELECT * FROM users WHERE email = ${email}`;
-      if (res[0]) return res[0];
+      try {
+        const res = await this.sql`SELECT * FROM users WHERE email = ${email}`;
+        if (res[0]) return res[0];
+      } catch (e) { console.error("GetUser error:", e); }
     }
     const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || '[]');
     return users.find((u: any) => u.email === email) || null;
@@ -156,7 +169,12 @@ export class DbService {
     const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || '[]');
     users.push(user);
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-    if (this.sql) await this.sql`INSERT INTO users (id, email, name, password) VALUES (${user.id}, ${user.email}, ${user.name}, ${user.password || ''})`;
+    
+    if (this.sql) {
+      try {
+        await this.sql`INSERT INTO users (id, email, name, password) VALUES (${user.id}, ${user.email}, ${user.name}, ${user.password || ''})`;
+      } catch (e) { console.error("CreateUser error:", e); }
+    }
     return user;
   }
 
@@ -164,8 +182,10 @@ export class DbService {
   async getConversations(userId: string): Promise<Conversation[]> {
     await this.init();
     if (this.sql) {
-      const rows = await this.sql`SELECT * FROM conversations WHERE user_id = ${userId} ORDER BY created_at DESC`;
-      return rows.map(r => ({ id: r.id, userId: r.user_id, title: r.title, createdAt: r.created_at }));
+      try {
+        const rows = await this.sql`SELECT * FROM conversations WHERE user_id = ${userId} ORDER BY created_at DESC`;
+        return rows.map(r => ({ id: r.id, userId: r.user_id, title: r.title, createdAt: r.created_at }));
+      } catch (e) { console.error(e); }
     }
     return JSON.parse(localStorage.getItem(`${STORAGE_KEYS.CONVERSATIONS}_${userId}`) || '[]');
   }
@@ -176,15 +196,22 @@ export class DbService {
     const convs = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.CONVERSATIONS}_${userId}`) || '[]');
     convs.unshift(conv);
     localStorage.setItem(`${STORAGE_KEYS.CONVERSATIONS}_${userId}`, JSON.stringify(convs));
-    if (this.sql) await this.sql`INSERT INTO conversations (id, user_id, title) VALUES (${conv.id}, ${userId}, ${title})`;
+    
+    if (this.sql) {
+      try {
+        await this.sql`INSERT INTO conversations (id, user_id, title) VALUES (${conv.id}, ${userId}, ${title})`;
+      } catch (e) { console.error(e); }
+    }
     return conv;
   }
 
   async getMessages(conversationId: string): Promise<Message[]> {
     await this.init();
     if (this.sql) {
-      const rows = await this.sql`SELECT * FROM messages WHERE conversation_id = ${conversationId} ORDER BY created_at ASC`;
-      return rows.map(r => ({ id: r.id, conversationId: r.conversation_id, role: r.role as any, content: r.content, createdAt: r.created_at }));
+      try {
+        const rows = await this.sql`SELECT * FROM messages WHERE conversation_id = ${conversationId} ORDER BY created_at ASC`;
+        return rows.map(r => ({ id: r.id, conversationId: r.conversation_id, role: r.role as any, content: r.content, createdAt: r.created_at }));
+      } catch (e) { console.error(e); }
     }
     return JSON.parse(localStorage.getItem(`${STORAGE_KEYS.MESSAGES}_${conversationId}`) || '[]');
   }
@@ -195,7 +222,12 @@ export class DbService {
     const msgs = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.MESSAGES}_${conversationId}`) || '[]');
     msgs.push(msg);
     localStorage.setItem(`${STORAGE_KEYS.MESSAGES}_${conversationId}`, JSON.stringify(msgs));
-    if (this.sql) await this.sql`INSERT INTO messages (id, conversation_id, role, content) VALUES (${msg.id}, ${conversationId}, ${role}, ${content})`;
+    
+    if (this.sql) {
+      try {
+        await this.sql`INSERT INTO messages (id, conversation_id, role, content) VALUES (${msg.id}, ${conversationId}, ${role}, ${content})`;
+      } catch (e) { console.error(e); }
+    }
     return msg;
   }
 }

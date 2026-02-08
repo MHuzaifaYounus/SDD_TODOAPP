@@ -1,0 +1,25 @@
+# values-minikube.yaml
+# Values specific for Minikube local development environment
+
+# Override image tags if using local Docker images or specific dev images
+frontend:
+  image:
+    tag: "dev-local" # Example for a local dev image
+  service:
+    type: ClusterIP # Typically ClusterIP for local dev, or NodePort if directly exposing
+
+backend:
+  image:
+    tag: "dev-local"
+  service:
+    type: ClusterIP
+
+worker:
+  image:
+    tag: "dev-local"
+  service:
+    type: ClusterIP
+
+# For local development, an Ingress might be used, or direct port-forwarding
+ingressService:
+  type: NodePort # Easier to access directly in Minikube, or use Ingress
